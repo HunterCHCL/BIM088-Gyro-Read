@@ -29,6 +29,15 @@
 #define BMI088_REG_GYRO_Z_L 0x06
 #define BMI088_REG_GYRO_Z_H 0x07
 
+#define BMI088_REG_ACC_RANGE 0x41
+#define BMI088_REG_GYRO_RANGE 0x0F
+
+#define BMI088_REG_ACC_PWR_CONF 0x7C
+#define BMI088_REG_ACC_PWR_CTRL 0x7D
+#define BMI088_REG_GYRO_LPM1 0x11
+#define BMI088_REG_GYRO_SOFTRESET 0x14
+#define BMI088_REG_ACC_SOFTRESET 0x7E
+
 #define BMI088_ACC_RANGE_3G 0x00
 #define BMI088_ACC_RANGE_6G 0x01
 #define BMI088_ACC_RANGE_12G 0x02
@@ -60,20 +69,12 @@ typedef struct {
 
 extern BMI088_Data_t BMI088_Data;
 
-void BMI088_ACC_Write_Reg(uint8_t addr, uint8_t data);
-void BMI088_ACC_Write_Multi_Reg(uint8_t addr, const uint8_t *data, uint16_t len);
-void BMI088_ACC_Read_Reg(uint8_t addr, uint8_t *data);
-void BMI088_ACC_Read_Multi_Reg(uint8_t addr, uint8_t *data, uint16_t len);
-
-void BMI088_GYRO_Write_Reg(uint8_t addr, uint8_t data);
-void BMI088_GYRO_Write_Multi_Reg(uint8_t addr, const uint8_t *data, uint16_t len);
-void BMI088_GYRO_Read_Reg(uint8_t addr, uint8_t *data);
-void BMI088_GYRO_Read_Multi_Reg(uint8_t addr, uint8_t *data, uint16_t len);
-
 void BMI088_Init(void);
 void BMI088_Read_Accel(BMI088_Data_t *data);
 void BMI088_Read_Gyro(BMI088_Data_t *data);
 void BMI088_Set_Accel_Range(uint8_t range);
 void BMI088_Set_Gyro_Range(uint8_t range);
+uint8_t BMI088_Get_Accel_ID(void);
+uint8_t BMI088_Get_Gyro_ID(void);
 
 #endif /* __BMI088_H__ */

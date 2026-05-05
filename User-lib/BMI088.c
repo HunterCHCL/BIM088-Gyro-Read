@@ -38,21 +38,24 @@ void BMI088_ACC_Write_Reg(uint8_t addr, uint8_t data)
 }
 void BMI088_ACC_Read_Reg(uint8_t addr, uint8_t *data)
 {
-    uint8_t tx[2] = {addr | 0x80, 0x00};
+    uint8_t tx[3] = {addr | 0x80, 0x00, 0x00};
+    uint8_t rx[3] = {0};
     BMI088_ACC_CS_Low();
-    BMI088_TransmitRecieve(tx, data, 2);
+    BMI088_TransmitRecieve(tx, rx, 3);
     BMI088_ACC_CS_High();
+    *data = rx[2];
 }
 void BMI088_ACC_Read_Multi_Reg(uint8_t addr, uint8_t *data, uint16_t len)
 {
-    uint8_t tx[len + 1];
-    uint8_t rx[len + 1];
+    uint8_t tx[len + 2];
+    uint8_t rx[len + 2];
     memset(tx, 0x00, sizeof(tx));
+    memset(rx, 0x00, sizeof(rx));
     tx[0] = addr | 0x80;
     BMI088_ACC_CS_Low();
-    BMI088_TransmitRecieve(tx, rx, len + 1);
+    BMI088_TransmitRecieve(tx, rx, len + 2);
     BMI088_ACC_CS_High();
-    memcpy(data, rx + 1, len);
+    memcpy(data, rx + 2, len);
 }
 void BMI088_GYRO_Write_Reg(uint8_t addr, uint8_t data)
 {
@@ -65,61 +68,23 @@ void BMI088_GYRO_Write_Reg(uint8_t addr, uint8_t data)
 void BMI088_GYRO_Read_Reg(uint8_t addr, uint8_t *data)
 {
     uint8_t tx[2] = {addr | 0x80, 0x00};
+    uint8_t rx[2] = {0};
     BMI088_GYRO_CS_Low();
-    BMI088_TransmitRecieve(tx, data, 2);
+    BMI088_TransmitRecieve(tx, rx, 2);
     BMI088_GYRO_CS_High();
+    *data = rx[1];
 }
 void BMI088_GYRO_Read_Multi_Reg(uint8_t addr, uint8_t *data, uint16_t len)
 {
     uint8_t tx[len + 1];
     uint8_t rx[len + 1];
     memset(tx, 0x00, sizeof(tx));
+    memset(rx, 0x00, sizeof(rx));
     tx[0] = addr | 0x80;
     BMI088_GYRO_CS_Low();
     BMI088_TransmitRecieve(tx, rx, len + 1);
     BMI088_GYRO_CS_High();
     memcpy(data, rx + 1, len);
-}
-void BMI088_Init(void)
-{
-    //加速度计初始化
-    BMI088_ACC_Write_Reg(BMI088_ACC_PWR_CTRL, 0x00); //正常模式
-    BMI088_Delay_ms(10);
-    BMI088_ACC_Write_Reg(BMI088_ACC_PWR_CTRL, 0x04); //开启加速度计
-    BMI088_Delay_ms(10);
-    BMI088_ACC_Write_Reg(BMI088_ACC_RANGE, g_accel_range); //设置加速度计量程
-    BMI088_Delay_ms(10);
-    //陀螺仪初始化
-    BMI088_GYRO_Write_Reg(BMI088_GYRO_LPM1, 0x00); //正常模式
-    BMI088_Delay_ms(10);
-    BMI088_GYRO_Write_Reg(BMI088_GYRO_RANGE, g_gyro_range); //设置陀螺仪量程
-    BMI088_Delay_ms(10);
-}
-void BMI088_Read_Accel(BMI088_Data_t *data)
-{
-    uint8_t raw_data[6];
-    BMI088_ACC_Read_Multi_Reg(BMI088_ACC_X_LSB, raw_data, 6);
-    data.ax = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[1] << 8) | raw_data[0]);
-    data.ay = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[3] << 8) | raw_data[2]);
-    data.az = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[5] << 8) | raw_data[4]);
-}
-void BMI088_Read_Gyro(BMI088_Data_t *data)
-{
-    uint8_t raw_data[6];
-    BMI088_GYRO_Read_Multi_Reg(BMI088_GYRO_X_LSB, raw_data, 6);
-    data.gx = BMI088_Gyro_Sensitivity() * (float)(int16_t)((raw_data[1] << 8) | raw_data[0]);
-    data.gy = BMI088_Gyro_Sensitivity() * (float)(int16_t)((raw_data[3] << 8) | raw_data[2]);
-    data.gz = BMI088_Gyro_Sensitivity() * (float)(int16_t)((raw_data[5] << 8) | raw_data[4]);
-}
-void BMI088_Set_Accel_Range(uint8_t range)
-{
-    g_accel_range = range;
-    BMI088_ACC_Write_Reg(BMI088_ACC_RANGE, g_accel_range);
-}
-void BMI088_Set_Gyro_Range(uint8_t range)
-{
-    g_gyro_range = range;
-    BMI088_GYRO_Write_Reg(BMI088_GYRO_RANGE, g_gyro_range);
 }
 static float BMI088_Accel_Sensitivity()
 {
@@ -155,3 +120,80 @@ static float BMI088_Gyro_Sensitivity()
             return BMI088_GYRO_SENS_2000DPS;
     }
 }
+void BMI088_Init(void)
+{
+    uint8_t dummy = 0;
+    //产生SPI上升沿，将加速度计切换到SPI模式
+    BMI088_ACC_Read_Reg(0x00, &dummy);
+    BMI088_Delay_ms(2);
+    
+    //加速度计软复位
+    BMI088_ACC_Write_Reg(BMI088_REG_ACC_SOFTRESET, 0xB6);
+    BMI088_Delay_ms(50);
+    
+    //产生SPI上升沿，将加速度计切换到SPI模式
+    BMI088_ACC_Read_Reg(0x00, &dummy);
+    BMI088_Delay_ms(2);
+
+    //加速度计开启工作
+    BMI088_ACC_Write_Reg(BMI088_REG_ACC_PWR_CTRL, 0x04); //开启加速度计: ACC_ON
+    BMI088_Delay_ms(50); //等待加速度计完成启动
+    //加速度计设置为Active模式 (要在打开加速度计之后)
+    BMI088_ACC_Write_Reg(BMI088_REG_ACC_PWR_CONF, 0x00); 
+    BMI088_Delay_ms(10);
+    BMI088_ACC_Write_Reg(BMI088_REG_ACC_RANGE, g_accel_range); //设置加速度计量程
+    BMI088_Delay_ms(10);
+    
+    //陀螺仪软复位
+    BMI088_GYRO_Write_Reg(BMI088_REG_GYRO_SOFTRESET, 0xB6);
+    BMI088_Delay_ms(50);    
+
+    //陀螺仪初始化
+    BMI088_GYRO_Read_Reg(0x00, &dummy); //陀螺仪软复位可能会用到
+    BMI088_Delay_ms(1);
+    BMI088_GYRO_Write_Reg(BMI088_REG_GYRO_LPM1, 0x00); //正常模式
+    BMI088_Delay_ms(50);
+    BMI088_GYRO_Write_Reg(BMI088_REG_GYRO_RANGE, g_gyro_range); //设置陀螺仪量程
+    BMI088_Delay_ms(10);
+}
+void BMI088_Read_Accel(BMI088_Data_t *data)
+{
+    uint8_t raw_data[6];
+    BMI088_ACC_Read_Multi_Reg(BMI088_REG_ACC_X_L, raw_data, 6);
+    data->ax = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[1] << 8) | raw_data[0]);
+    data->ay = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[3] << 8) | raw_data[2]);
+    data->az = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[5] << 8) | raw_data[4]);
+}
+void BMI088_Read_Gyro(BMI088_Data_t *data)
+{
+    uint8_t raw_data[6];
+    BMI088_GYRO_Read_Multi_Reg(BMI088_REG_GYRO_X_L, raw_data, 6);
+    data->gx = BMI088_Gyro_Sensitivity() * (float)(int16_t)((raw_data[1] << 8) | raw_data[0]);
+    data->gy = BMI088_Gyro_Sensitivity() * (float)(int16_t)((raw_data[3] << 8) | raw_data[2]);
+    data->gz = BMI088_Gyro_Sensitivity() * (float)(int16_t)((raw_data[5] << 8) | raw_data[4]);
+}
+void BMI088_Set_Accel_Range(uint8_t range)
+{
+    g_accel_range = range;
+    BMI088_ACC_Write_Reg(BMI088_REG_ACC_RANGE, g_accel_range);
+}
+void BMI088_Set_Gyro_Range(uint8_t range)
+{
+    g_gyro_range = range;
+    BMI088_GYRO_Write_Reg(BMI088_REG_GYRO_RANGE, g_gyro_range);
+}
+
+uint8_t BMI088_Get_Accel_ID(void)
+{
+    uint8_t id = 0;
+    BMI088_ACC_Read_Reg(0x00, &id);
+    return id;
+}
+
+uint8_t BMI088_Get_Gyro_ID(void)
+{
+    uint8_t id = 0;
+    BMI088_GYRO_Read_Reg(0x00, &id);
+    return id;
+}
+

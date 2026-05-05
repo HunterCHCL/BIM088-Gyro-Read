@@ -1,0 +1,28 @@
+--cpu=Cortex-M4.fp.sp
+"gyro-read\startup_stm32f407xx.o"
+"gyro-read\main.o"
+"gyro-read\gpio.o"
+"gyro-read\dma.o"
+"gyro-read\spi.o"
+"gyro-read\stm32f4xx_it.o"
+"gyro-read\stm32f4xx_hal_msp.o"
+"gyro-read\stm32f4xx_hal_spi.o"
+"gyro-read\stm32f4xx_hal_rcc.o"
+"gyro-read\stm32f4xx_hal_rcc_ex.o"
+"gyro-read\stm32f4xx_hal_flash.o"
+"gyro-read\stm32f4xx_hal_flash_ex.o"
+"gyro-read\stm32f4xx_hal_flash_ramfunc.o"
+"gyro-read\stm32f4xx_hal_gpio.o"
+"gyro-read\stm32f4xx_hal_dma_ex.o"
+"gyro-read\stm32f4xx_hal_dma.o"
+"gyro-read\stm32f4xx_hal_pwr.o"
+"gyro-read\stm32f4xx_hal_pwr_ex.o"
+"gyro-read\stm32f4xx_hal_cortex.o"
+"gyro-read\stm32f4xx_hal.o"
+"gyro-read\stm32f4xx_hal_exti.o"
+"gyro-read\system_stm32f4xx.o"
+"gyro-read\bmi088.o"
+--strict --scatter "Gyro-Read\Gyro-Read.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "Gyro-Read.map" -o Gyro-Read\Gyro-Read.axf
