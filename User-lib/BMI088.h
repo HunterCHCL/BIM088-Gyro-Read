@@ -69,6 +69,33 @@ typedef struct {
 
 extern BMI088_Data_t BMI088_Data;
 
+/* 角度解算数据结构 */
+typedef struct {
+    float roll;   /* 横滚角 (°) */
+    float pitch;  /* 俯仰角 (°) */
+    float yaw;    /* 偏航角 (°) */
+} BMI088_Angle_t;
+
+/* 陀螺仪零偏校准数据结构 */
+typedef struct {
+    float gx_offset;
+    float gy_offset;
+    float gz_offset;
+    uint8_t calibrated;
+} BMI088_GyroCalib_t;
+
+/* 卡尔曼滤波器结构 (单轴) */
+typedef struct {
+    float Q_angle;     /* 角度过程噪声协方差 */
+    float Q_gyro;      /* 角速度过程噪声协方差 */
+    float R_angle;     /* 角度测量噪声协方差 (加速度计) */
+    float angle;       /* 估计角度 (°) */
+    float bias;        /* 陀螺仪零偏估计 (°/s) */
+    float P[2][2];     /* 误差协方差矩阵 */
+} BMI088_Kalman_t;
+
+extern BMI088_Angle_t BMI088_Angle;
+
 void BMI088_Init(void);
 void BMI088_Read_Accel(BMI088_Data_t *data);
 void BMI088_Read_Gyro(BMI088_Data_t *data);
@@ -76,5 +103,14 @@ void BMI088_Set_Accel_Range(uint8_t range);
 void BMI088_Set_Gyro_Range(uint8_t range);
 uint8_t BMI088_Get_Accel_ID(void);
 uint8_t BMI088_Get_Gyro_ID(void);
+
+/* 启动校准 (陀螺仪零偏) */
+void BMI088_Calib_Init(void);
+uint8_t BMI088_Is_Calibrated(void);
+
+/* 角度解算 */
+void BMI088_Kalman_Init(BMI088_Kalman_t *kf, float Q_angle, float Q_gyro, float R_angle);
+float BMI088_Kalman_Update(BMI088_Kalman_t *kf, float gyro_rate, float acc_angle, float dt);
+void BMI088_Update_Angle(float dt);
 
 #endif /* __BMI088_H__ */

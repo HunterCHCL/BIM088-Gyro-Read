@@ -1,5 +1,6 @@
 #include "BMI088.h"
 #include <string.h>
+#include <math.h>
 
 static uint8_t  g_accel_range = BMI088_ACC_RANGE_3G;
 static uint8_t  g_gyro_range  = BMI088_GYRO_RANGE_2000DPS;
@@ -195,5 +196,135 @@ uint8_t BMI088_Get_Gyro_ID(void)
     uint8_t id = 0;
     BMI088_GYRO_Read_Reg(0x00, &id);
     return id;
+}
+
+/* 角度解算全局变量 */
+BMI088_Angle_t BMI088_Angle = {0};
+static BMI088_Kalman_t s_kf_roll;
+static BMI088_Kalman_t s_kf_pitch;
+static BMI088_GyroCalib_t s_gyro_calib = {0};
+
+#define BMI088_CALIB_SAMPLES 200
+#define BMI088_RAD_TO_DEG   57.29578f
+
+/**
+  * @brief  启动校准：采集静止状态下陀螺仪各轴零偏
+  * @note   校准时传感器应保持静止，函数会阻塞约1秒
+  */
+void BMI088_Calib_Init(void)
+{
+    float sum_gx = 0, sum_gy = 0, sum_gz = 0;
+    BMI088_Data_t data;
+
+    s_gyro_calib.calibrated = 0;
+
+    for (int i = 0; i < BMI088_CALIB_SAMPLES; i++)
+    {
+        BMI088_Read_Gyro(&data);
+        sum_gx += data.gx;
+        sum_gy += data.gy;
+        sum_gz += data.gz;
+        BMI088_Delay_ms(5);
+    }
+
+    s_gyro_calib.gx_offset = sum_gx / BMI088_CALIB_SAMPLES;
+    s_gyro_calib.gy_offset = sum_gy / BMI088_CALIB_SAMPLES;
+    s_gyro_calib.gz_offset = sum_gz / BMI088_CALIB_SAMPLES;
+    s_gyro_calib.calibrated = 1;
+}
+
+/**
+  * @brief  查询陀螺仪零偏校准是否完成
+  */
+uint8_t BMI088_Is_Calibrated(void)
+{
+    return s_gyro_calib.calibrated;
+}
+
+/**
+  * @brief  初始化单轴卡尔曼滤波器
+  * @param  kf       : 卡尔曼滤波器实例指针
+  * @param  Q_angle  : 角度过程噪声协方差 (越小越信任陀螺仪积分)
+  * @param  Q_gyro   : 角速度过程噪声协方差 (越小越信任陀螺仪零偏估计)
+  * @param  R_angle  : 角度测量噪声协方差 (越大越信任陀螺仪、越小越信任加速度计)
+  */
+void BMI088_Kalman_Init(BMI088_Kalman_t *kf, float Q_angle, float Q_gyro, float R_angle)
+{
+    kf->Q_angle = Q_angle;
+    kf->Q_gyro  = Q_gyro;
+    kf->R_angle = R_angle;
+    kf->angle   = 0;
+    kf->bias    = 0;
+    kf->P[0][0] = 0;
+    kf->P[0][1] = 0;
+    kf->P[1][0] = 0;
+    kf->P[1][1] = 0;
+}
+
+/**
+  * @brief  单轴卡尔曼滤波器更新 (预测+测量更新)
+  * @param  kf         : 卡尔曼滤波器实例指针
+  * @param  gyro_rate  : 该轴陀螺仪角速度 (°/s)
+  * @param  acc_angle  : 该轴加速度计参考角度 (°)
+  * @param  dt         : 上次更新以来的时间间隔 (s)
+  * @retval 滤波后的角度估计值 (°)
+  */
+float BMI088_Kalman_Update(BMI088_Kalman_t *kf, float gyro_rate, float acc_angle, float dt)
+{
+    float S, K0, K1;
+
+    /* 预测：陀螺仪积分 (状态: angle, bias) */
+    kf->angle += dt * (gyro_rate - kf->bias);
+    kf->P[0][0] += dt * (dt * kf->P[1][1] - kf->P[0][1] - kf->P[1][0] + kf->Q_angle);
+    kf->P[0][1] -= dt * kf->P[1][1];
+    kf->P[1][0] -= dt * kf->P[1][1];
+    kf->P[1][1] += kf->Q_gyro * dt;
+
+    /* 更新：加速度计观测修正 */
+    S  = kf->P[0][0] + kf->R_angle;
+    K0 = kf->P[0][0] / S;
+    K1 = kf->P[1][0] / S;
+
+    kf->angle += K0 * (acc_angle - kf->angle);
+    kf->bias  += K1 * (acc_angle - kf->angle);
+
+    kf->P[0][0] -= K0 * kf->P[0][0];
+    kf->P[0][1] -= K0 * kf->P[0][1];
+    kf->P[1][0] -= K1 * kf->P[0][0];
+    kf->P[1][1] -= K1 * kf->P[0][1];
+
+    return kf->angle;
+}
+
+/**
+  * @brief  更新角度解算 (需以固定频率调用)
+  * @param  dt  上次调用以来的时间间隔 (s)
+  * @note  内部读取加速度计和陀螺仪，输出角度到 BMI088_Angle
+  *        首次调用前需完成 BMI088_Calib_Init()
+  */
+void BMI088_Update_Angle(float dt)
+{
+    float acc_roll, acc_pitch;
+    BMI088_Data_t data;
+
+    BMI088_Read_Gyro(&data);
+    BMI088_Read_Accel(&data);
+
+    /* 陀螺仪去零偏 */
+    float gx = data.gx - s_gyro_calib.gx_offset;
+    float gy = data.gy - s_gyro_calib.gy_offset;
+    float gz = data.gz - s_gyro_calib.gz_offset;
+
+    /* 由加速度计计算参考角度 */
+    acc_roll  = atan2f(data.ay, data.az) * BMI088_RAD_TO_DEG;
+    acc_pitch = atan2f(-data.ax, sqrtf(data.ay * data.ay + data.az * data.az)) * BMI088_RAD_TO_DEG;
+
+    /* 卡尔曼滤波融合 */
+    BMI088_Kalman_Update(&s_kf_roll,  gx, acc_roll,  dt);
+    BMI088_Kalman_Update(&s_kf_pitch, gy, acc_pitch, dt);
+
+    BMI088_Angle.roll  = s_kf_roll.angle;
+    BMI088_Angle.pitch = s_kf_pitch.angle;
+    BMI088_Angle.yaw  += gz * dt;
 }
 
