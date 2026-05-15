@@ -20,11 +20,15 @@
 #include "main.h"
 #include "dma.h"
 #include "spi.h"
+#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "BMI088.h"
+#include "usbd_cdc_if.h"
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -90,21 +94,42 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_SPI1_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 	BMI088_Init();
-	BMI088_Data_t BMI088_Data={0};
+	extern BMI088_Data_t BMI088_Data;
+
+	BMI088_Kalman_Init(&BMI088_Data.kf_roll,  0.001f, 0.003f, 0.03f);
+	BMI088_Kalman_Init(&BMI088_Data.kf_pitch, 0.001f, 0.003f, 0.03f);
+
+	BMI088_Calib_Init();
+
+	uint32_t last_tick = HAL_GetTick();
   
-	volatile uint8_t acc_id = BMI088_Get_Accel_ID();
-	volatile uint8_t gyro_id = BMI088_Get_Gyro_ID();
+		char buf[128];
+    uint8_t i = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		BMI088_Read_Accel(&BMI088_Data);
-		BMI088_Read_Gyro(&BMI088_Data);
-		HAL_Delay(100);
+		uint32_t now = HAL_GetTick();
+		float dt = (now - last_tick) / 1000.0f;
+		last_tick = now;
+
+		BMI088_Update_Angle(dt);
+    if(i++>=10)
+    {
+		  sprintf(buf, "Angle: %.2f %.2f %.2f  Accel: %.2f %.2f %.2f Gyro: %.2f %.2f %.2f\r\n",
+				BMI088_Data.angle.roll, BMI088_Data.angle.pitch, BMI088_Data.angle.yaw,
+				BMI088_Data.ax, BMI088_Data.ay, BMI088_Data.az,
+				BMI088_Data.gx, BMI088_Data.gy, BMI088_Data.gz);
+		  CDC_Transmit_FS((uint8_t*)buf, strlen(buf));
+      i = 0;
+    }
+
+		HAL_Delay(50);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -134,9 +159,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 6;
-  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLN = 72;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 3;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -148,10 +173,10 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
