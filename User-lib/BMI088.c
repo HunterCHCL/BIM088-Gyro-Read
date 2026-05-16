@@ -202,7 +202,6 @@ uint8_t BMI088_Get_Gyro_ID(void)
 void BMI088_Calib_Init(void)
 {
     float sum_gx = 0, sum_gy = 0, sum_gz = 0;
-    double ticks = HAL_GetTick();
 
     BMI088_Data.gx_offset = 0;
     BMI088_Data.gy_offset = 0;
@@ -216,11 +215,10 @@ void BMI088_Calib_Init(void)
         sum_gz += BMI088_Data.gz;
         BMI088_Delay_ms(5);
     }
-    ticks = HAL_GetTick() - ticks;
 
-    BMI088_Data.gx_offset = sum_gx / ticks * 1000.0f;
-    BMI088_Data.gy_offset = sum_gy / ticks * 1000.0f;
-    BMI088_Data.gz_offset = sum_gz / ticks * 1000.0f;
+    BMI088_Data.gx_offset = sum_gx / BMI088_CALIB_SAMPLES;
+    BMI088_Data.gy_offset = sum_gy / BMI088_CALIB_SAMPLES;
+    BMI088_Data.gz_offset = sum_gz / BMI088_CALIB_SAMPLES;
 }
 void BMI088_Update_Angle(float dt)
 {
