@@ -202,6 +202,7 @@ uint8_t BMI088_Get_Gyro_ID(void)
 void BMI088_Calib_Init(void)
 {
     float sum_gx = 0, sum_gy = 0, sum_gz = 0;
+    double ticks = HAL_GetTick();
 
     BMI088_Data.gx_offset = 0;
     BMI088_Data.gy_offset = 0;
@@ -215,67 +216,18 @@ void BMI088_Calib_Init(void)
         sum_gz += BMI088_Data.gz;
         BMI088_Delay_ms(5);
     }
+    ticks = HAL_GetTick() - ticks;
 
-    BMI088_Data.gx_offset = sum_gx / BMI088_CALIB_SAMPLES;
-    BMI088_Data.gy_offset = sum_gy / BMI088_CALIB_SAMPLES;
-    BMI088_Data.gz_offset = sum_gz / BMI088_CALIB_SAMPLES;
+    BMI088_Data.gx_offset = sum_gx / ticks * 1000.0f;
+    BMI088_Data.gy_offset = sum_gy / ticks * 1000.0f;
+    BMI088_Data.gz_offset = sum_gz / ticks * 1000.0f;
 }
-void BMI088_Kalman_Init(BMI088_Kalman_t *kf, float Q_angle, float Q_gyro, float R_angle)
-{
-    kf->Q_angle = Q_angle;
-    kf->Q_gyro  = Q_gyro;
-    kf->R_angle = R_angle;
-    kf->angle   = 0;
-    kf->bias    = 0;
-    kf->P[0][0] = 0;
-    kf->P[0][1] = 0;
-    kf->P[1][0] = 0;
-    kf->P[1][1] = 0;
-}
-
-float BMI088_Kalman_Update(BMI088_Kalman_t *kf, float gyro_rate, float acc_angle, float dt)
-{
-    float S, K0, K1, P00_pred, P01_pred;
-
-    kf->angle += dt * (gyro_rate - kf->bias);
-    kf->P[0][0] += dt * (dt * kf->P[1][1] - kf->P[0][1] - kf->P[1][0] + kf->Q_angle);
-    kf->P[0][1] -= dt * kf->P[1][1];
-    kf->P[1][0] -= dt * kf->P[1][1];
-    kf->P[1][1] += kf->Q_gyro * dt;
-
-    P00_pred = kf->P[0][0];
-    P01_pred = kf->P[0][1];
-
-    S  = kf->P[0][0] + kf->R_angle;
-    K0 = kf->P[0][0] / S;
-    K1 = kf->P[1][0] / S;
-
-    kf->angle += K0 * (acc_angle - kf->angle);
-    kf->bias  += K1 * (acc_angle - kf->angle);
-
-    kf->P[0][0] -= K0 * P00_pred;
-    kf->P[0][1] -= K0 * P01_pred;
-    kf->P[1][0] -= K1 * P00_pred;
-    kf->P[1][1] -= K1 * P01_pred;
-
-    return kf->angle;
-}
-
 void BMI088_Update_Angle(float dt)
 {
-    float acc_roll, acc_pitch;
-
     BMI088_Read_Gyro(&BMI088_Data);
     BMI088_Read_Accel(&BMI088_Data);
-
-    acc_roll  = atan2f(BMI088_Data.ay, BMI088_Data.az) * BMI088_RAD_TO_DEG;
-    acc_pitch = atan2f(-BMI088_Data.ax, sqrtf(BMI088_Data.ay * BMI088_Data.ay + BMI088_Data.az * BMI088_Data.az)) * BMI088_RAD_TO_DEG;
-
-    BMI088_Kalman_Update(&BMI088_Data.kf_roll,  BMI088_Data.gx, acc_roll,  dt);
-    BMI088_Kalman_Update(&BMI088_Data.kf_pitch, BMI088_Data.gy, acc_pitch, dt);
-
-    BMI088_Data.angle.roll  = BMI088_Data.kf_roll.angle;
-    BMI088_Data.angle.pitch = BMI088_Data.kf_pitch.angle;
-    BMI088_Data.angle.yaw  += BMI088_Data.gz * dt;
+    BMI088_Data.angle.roll += BMI088_Data.gx * dt;
+    BMI088_Data.angle.pitch += BMI088_Data.gy * dt;
+    BMI088_Data.angle.yaw += BMI088_Data.gz * dt;
 }
 
