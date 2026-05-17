@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dma.h"
+#include "i2c.h"
 #include "spi.h"
 #include "usb_device.h"
 #include "gpio.h"
@@ -26,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "BMI088.h"
+#include "IST8310.h"
 #include "usbd_cdc_if.h"
 #include <stdio.h>
 #include <string.h>
@@ -95,9 +97,12 @@ int main(void)
   MX_DMA_Init();
   MX_SPI1_Init();
   MX_USB_DEVICE_Init();
+  MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
 	BMI088_Init();
 	extern BMI088_Data_t BMI088_Data;
+  extern IST8310_Data_t IST8310_Data;
+  IST8310_Init();
 	BMI088_Calib_Init();
 
 	uint32_t last_tick = HAL_GetTick();
@@ -113,11 +118,12 @@ int main(void)
 		uint32_t now = HAL_GetTick();
 		float dt = (now - last_tick) / 1000.0f;
 		BMI088_Update_Angle(dt);
+    IST8310_Read_Data(&IST8310_Data);
 		last_tick = now;
     if(i++>=10)
     {
-		  sprintf(buf, "Angle: %.2f %.2f %.2f  Accel: %.2f %.2f %.2f Gyro: %.2f %.2f %.2f\r\n",
-			BMI088_Data.angle.roll, BMI088_Data.angle.pitch, BMI088_Data.angle.yaw,BMI088_Data.ax, BMI088_Data.ay, BMI088_Data.az,BMI088_Data.gx, BMI088_Data.gy, BMI088_Data.gz);
+		  sprintf(buf, "Angle: %.2f %.2f %.2f  Accel: %.2f %.2f %.2f Gyro: %.2f %.2f %.2f\r\n Mag: %.2f %.2f %.2f\r\n",
+			BMI088_Data.angle.roll, BMI088_Data.angle.pitch, BMI088_Data.angle.yaw,BMI088_Data.ax, BMI088_Data.ay, BMI088_Data.az,BMI088_Data.gx, BMI088_Data.gy, BMI088_Data.gz, IST8310_Data.mag_x, IST8310_Data.mag_y, IST8310_Data.mag_z);
 		  CDC_Transmit_FS((uint8_t*)buf, strlen(buf));
       i = 0;
     }

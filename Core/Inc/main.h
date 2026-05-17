@@ -57,6 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define IST8310_RSTN_Pin GPIO_PIN_6
+#define IST8310_RSTN_GPIO_Port GPIOG
+#define IST8310_DRDY_Pin GPIO_PIN_3
+#define IST8310_DRDY_GPIO_Port GPIOG
 #define CS1_Accel_Pin GPIO_PIN_4
 #define CS1_Accel_GPIO_Port GPIOA
 #define CS1_Gyro_Pin GPIO_PIN_0
