@@ -44,9 +44,9 @@ typedef struct{
     float mag_z;
 } IST8310_Data_t;
 
-extern IST8310_Data_t IST8310_Data;
+extern volatile IST8310_Data_t IST8310_Data;
 
 IST8310_Error_t IST8310_Init(void);
-void IST8310_Read_Data(IST8310_Data_t *data);
+void IST8310_Read_Data(volatile IST8310_Data_t *data);
 
 #endif /* __IST8310_H__ */

@@ -21,6 +21,7 @@
 #include "dma.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 #include "usb_device.h"
 #include "gpio.h"
 
@@ -29,6 +30,7 @@
 #include "BMI088.h"
 #include "IST8310.h"
 #include "usbd_cdc_if.h"
+#include "Attitude.h"
 #include <stdio.h>
 #include <string.h>
 /* USER CODE END Includes */
@@ -98,37 +100,30 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_DEVICE_Init();
   MX_I2C3_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 	BMI088_Init();
-	extern BMI088_Data_t BMI088_Data;
-  extern IST8310_Data_t IST8310_Data;
+	extern volatile BMI088_Data_t BMI088_Data;
+  extern volatile IST8310_Data_t IST8310_Data;
   IST8310_Init();
 	BMI088_Calib_Init();
+
+  HAL_TIM_Base_Start_IT(&htim6);
 
 	uint32_t last_tick = HAL_GetTick();
   
 		char buf[128];
-    uint8_t i = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		uint32_t now = HAL_GetTick();
-		float dt = (now - last_tick) / 1000.0f;
-		BMI088_Update_Angle(dt);
-    IST8310_Read_Data(&IST8310_Data);
-		last_tick = now;
-    if(i++>=10)
-    {
-		  sprintf(buf, "Angle: %.2f %.2f %.2f  Accel: %.2f %.2f %.2f Gyro: %.2f %.2f %.2f\r\n Mag: %.2f %.2f %.2f\r\n",
-			BMI088_Data.angle.roll, BMI088_Data.angle.pitch, BMI088_Data.angle.yaw,BMI088_Data.ax, BMI088_Data.ay, BMI088_Data.az,BMI088_Data.gx, BMI088_Data.gy, BMI088_Data.gz, IST8310_Data.mag_x, IST8310_Data.mag_y, IST8310_Data.mag_z);
-		  CDC_Transmit_FS((uint8_t*)buf, strlen(buf));
-      i = 0;
-    }
-
-		HAL_Delay(50);
+		  // sprintf(buf, "Angle: %.2f %.2f %.2f\nAccel: %.2f %.2f %.2f\nGyro: %.2f %.2f %.2f\n Mag: %.2f %.2f %.2f\r\n",
+			// BMI088_Data.angle.roll, BMI088_Data.angle.pitch, BMI088_Data.angle.yaw,BMI088_Data.ax, BMI088_Data.ay, BMI088_Data.az,BMI088_Data.gx, BMI088_Data.gy, BMI088_Data.gz, IST8310_Data.mag_x, IST8310_Data.mag_y, IST8310_Data.mag_z);
+		sprintf(buf, "samples:%.2f,%.2f,%.2f\r\n", BMI088_Data.angle.pitch, BMI088_Data.angle.roll, BMI088_Data.angle.yaw);
+      CDC_Transmit_FS((uint8_t*)buf, strlen(buf));
+    HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -158,9 +153,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 6;
-  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 3;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -172,17 +167,23 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM6)
+    {
+        Attitude_Update();
+    }
+}
 /* USER CODE END 4 */
 
 /**

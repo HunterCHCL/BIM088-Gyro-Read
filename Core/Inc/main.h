@@ -63,6 +63,10 @@ void Error_Handler(void);
 #define IST8310_DRDY_GPIO_Port GPIOG
 #define CS1_Accel_Pin GPIO_PIN_4
 #define CS1_Accel_GPIO_Port GPIOA
+#define INT1_Accel_Pin GPIO_PIN_4
+#define INT1_Accel_GPIO_Port GPIOC
+#define INT1_Gyro_Pin GPIO_PIN_5
+#define INT1_Gyro_GPIO_Port GPIOC
 #define CS1_Gyro_Pin GPIO_PIN_0
 #define CS1_Gyro_GPIO_Port GPIOB
 

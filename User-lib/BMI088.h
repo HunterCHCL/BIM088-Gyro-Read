@@ -107,11 +107,11 @@ typedef struct {
     BMI088_Angle_t angle;
 } BMI088_Data_t;
 
-extern BMI088_Data_t BMI088_Data;
+extern volatile BMI088_Data_t BMI088_Data;
 
 void BMI088_Init(void);
-void BMI088_Read_Accel(BMI088_Data_t *data);
-void BMI088_Read_Gyro(BMI088_Data_t *data);
+void BMI088_Read_Accel(volatile BMI088_Data_t *data);
+void BMI088_Read_Gyro(volatile BMI088_Data_t *data);
 void BMI088_Set_Accel_Range(uint8_t range);
 void BMI088_Set_Gyro_Range(uint8_t range);
 uint8_t BMI088_Get_Accel_ID(void);

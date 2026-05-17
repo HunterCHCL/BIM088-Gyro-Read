@@ -5,7 +5,7 @@
 static uint8_t  g_accel_range = BMI088_ACC_RANGE_3G;
 static uint8_t  g_gyro_range  = BMI088_GYRO_RANGE_250DPS;
 
-BMI088_Data_t BMI088_Data = {0};
+volatile BMI088_Data_t BMI088_Data = {0};
 
 static inline void BMI088_ACC_CS_Low(void)
 {
@@ -158,7 +158,7 @@ void BMI088_Init(void)
     BMI088_GYRO_Write_Reg(BMI088_REG_GYRO_RANGE, g_gyro_range);
     BMI088_Delay_ms(10);
 }
-void BMI088_Read_Accel(BMI088_Data_t *data)
+void BMI088_Read_Accel(volatile BMI088_Data_t *data)
 {
     uint8_t raw_data[6];
     BMI088_ACC_Read_Multi_Reg(BMI088_REG_ACC_X_L, raw_data, 6);
@@ -166,7 +166,7 @@ void BMI088_Read_Accel(BMI088_Data_t *data)
     data->ay = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[3] << 8) | raw_data[2]) - data->ay_offset;
     data->az = BMI088_Accel_Sensitivity() * (float)(int16_t)((raw_data[5] << 8) | raw_data[4]) - data->az_offset;
 }
-void BMI088_Read_Gyro(BMI088_Data_t *data)
+void BMI088_Read_Gyro(volatile BMI088_Data_t *data)
 {
     uint8_t raw_data[6];
     BMI088_GYRO_Read_Multi_Reg(BMI088_REG_GYRO_X_L, raw_data, 6);
@@ -220,12 +220,12 @@ void BMI088_Calib_Init(void)
     BMI088_Data.gy_offset = sum_gy / BMI088_CALIB_SAMPLES;
     BMI088_Data.gz_offset = sum_gz / BMI088_CALIB_SAMPLES;
 }
-void BMI088_Update_Angle(float dt)
-{
-    BMI088_Read_Gyro(&BMI088_Data);
-    BMI088_Read_Accel(&BMI088_Data);
-    BMI088_Data.angle.roll += BMI088_Data.gx * dt;
-    BMI088_Data.angle.pitch += BMI088_Data.gy * dt;
-    BMI088_Data.angle.yaw += BMI088_Data.gz * dt;
-}
+// void BMI088_Update_Angle(float dt)
+// {
+//     BMI088_Read_Gyro(&BMI088_Data);
+//     BMI088_Read_Accel(&BMI088_Data);
+//     BMI088_Data.angle.roll += BMI088_Data.gx * dt;
+//     BMI088_Data.angle.pitch += BMI088_Data.gy * dt;
+//     BMI088_Data.angle.yaw += BMI088_Data.gz * dt;
+// }
 

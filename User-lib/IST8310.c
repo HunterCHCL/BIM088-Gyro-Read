@@ -2,7 +2,7 @@
 
 #define IST8310_INIT_WRITE_REG_NUM 4
 
-IST8310_Data_t IST8310_Data={0};
+volatile IST8310_Data_t IST8310_Data={0};
 
 static void IST8310_Read_Reg(uint8_t addr, uint8_t *data)
 {
@@ -63,7 +63,7 @@ IST8310_Error_t IST8310_Init(void)
     return IST8310_NO_ERR;
 }
 
-void IST8310_Read_Data(IST8310_Data_t *data)
+void IST8310_Read_Data(volatile IST8310_Data_t *data)
 {
     uint8_t raw_data[7];
     IST8310_Read_Multi_Reg(IST8310_REG_STAT1, raw_data, 7);
