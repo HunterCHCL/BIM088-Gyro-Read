@@ -105,8 +105,6 @@ typedef struct {
     float az_offset;
 
     BMI088_Angle_t angle;
-    BMI088_Kalman_t kf_roll;
-    BMI088_Kalman_t kf_pitch;
 } BMI088_Data_t;
 
 extern BMI088_Data_t BMI088_Data;
@@ -120,10 +118,6 @@ uint8_t BMI088_Get_Accel_ID(void);
 uint8_t BMI088_Get_Gyro_ID(void);
 
 void BMI088_Calib_Init(void);
-uint8_t BMI088_Is_Calibrated(void);
-
-void BMI088_Kalman_Init(BMI088_Kalman_t *kf, float Q_angle, float Q_gyro, float R_angle);
-float BMI088_Kalman_Update(BMI088_Kalman_t *kf, float gyro_rate, float acc_angle, float dt);
 void BMI088_Update_Angle(float dt);
 
 #endif /* __BMI088_H__ */

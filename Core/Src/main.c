@@ -98,10 +98,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	BMI088_Init();
 	extern BMI088_Data_t BMI088_Data;
-
-	BMI088_Kalman_Init(&BMI088_Data.kf_roll,  0.001f, 0.003f, 0.03f);
-	BMI088_Kalman_Init(&BMI088_Data.kf_pitch, 0.001f, 0.003f, 0.03f);
-
 	BMI088_Calib_Init();
 
 	uint32_t last_tick = HAL_GetTick();
