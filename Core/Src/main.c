@@ -120,9 +120,11 @@ int main(void)
 		last_tick = now;
     if(i++>=10)
     {
-		  sprintf(buf, "Angle: %.2f %.2f %.2f  Accel: %.2f %.2f %.2f Gyro: %.2f %.2f %.2f\r\n",
-			BMI088_Data.angle.roll, BMI088_Data.angle.pitch, BMI088_Data.angle.yaw,BMI088_Data.ax, BMI088_Data.ay, BMI088_Data.az,BMI088_Data.gx, BMI088_Data.gy, BMI088_Data.gz);
-		  CDC_Transmit_FS((uint8_t*)buf, strlen(buf));
+		  // sprintf(buf, "Angle: %.2f %.2f %.2f  Accel: %.2f %.2f %.2f Gyro: %.2f %.2f %.2f\r\n",
+			// BMI088_Data.angle.roll, BMI088_Data.angle.pitch, BMI088_Data.angle.yaw,BMI088_Data.ax, BMI088_Data.ay, BMI088_Data.az,BMI088_Data.gx, BMI088_Data.gy, BMI088_Data.gz);
+		  sprintf(buf, "samples:%.2f,%.2f,%.2f\r\n",
+      BMI088_Data.angle.pitch, BMI088_Data.angle.roll, BMI088_Data.angle.yaw);
+      CDC_Transmit_FS((uint8_t*)buf, strlen(buf));
       i = 0;
     }
 
